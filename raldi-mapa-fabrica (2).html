@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Raldi Mapa — Layout da Fábrica</title>
+<meta name="theme-color" content="#982424">
+<link rel="icon" type="image/png" href="https://i.postimg.cc/9MsBrnJd/app-icone.png">
+<link rel="apple-touch-icon" href="https://i.postimg.cc/9MsBrnJd/app-icone.png">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --vm:#982424; --vm2:#7f1e1e; --tx:#4B4B55; --mut:#7c7c86;
+    --content:#ecece6; --sf:#fff; --ln:rgba(75,75,85,.14); --rail:#232428;
+    --st-vazio:#b9b7ae; --st-nao:#8d8b83; --st-and:#d4930d; --st-pau:#7a6ea8; --st-fim:#2f8f46;
+    --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{ font-family:'Archivo',system-ui,-apple-system,sans-serif; color:var(--tx); background:var(--content);
+    -webkit-font-smoothing:antialiased; font-size:15px; height:100dvh; overflow:hidden; }
+  button,input,select{ font-family:inherit; color:inherit; }
+  :focus-visible{ outline:2px solid var(--vm); outline-offset:2px; }
+  .tela{ position:fixed; inset:0; display:none; flex-direction:column; }
+  .tela.on{ display:flex; }
+
+  /* ===== Login ===== */
+  #login{ background:linear-gradient(165deg,#2c2d32 0%,#1a1b1e 100%); align-items:center; justify-content:center;
+    padding:calc(28px + var(--sat)) 22px calc(28px + var(--sab)); }
+  .lg{ width:min(380px,100%); text-align:center; }
+  .lg-ic{ width:76px; height:76px; border-radius:20px; margin:0 auto 18px; display:block; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+  .lg-t{ font-family:'Poppins',sans-serif; font-size:25px; font-weight:600; color:#fff; }
+  .lg-s{ font-size:10px; font-weight:800; letter-spacing:.34em; text-transform:uppercase; color:var(--vm); margin-top:8px; }
+  .lg-form{ margin-top:32px; text-align:left; }
+  .lg-f{ margin-bottom:14px; }
+  .lg-f label{ display:block; font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase;
+    color:rgba(255,255,255,.42); margin-bottom:7px; }
+  .lg-f input{ width:100%; font-size:17px; padding:16px; border:1.5px solid rgba(255,255,255,.14);
+    border-radius:14px; background:rgba(255,255,255,.06); color:#fff; }
+  .lg-f input::placeholder{ color:rgba(255,255,255,.26); }
+  .lg-f input:focus{ outline:0; border-color:var(--vm); background:rgba(255,255,255,.1); }
+  .lg-e{ font-size:13px; font-weight:600; color:#e57373; min-height:19px; margin-bottom:6px; }
+  .lg-b{ width:100%; font-size:17px; font-weight:700; padding:17px; border:0; border-radius:14px;
+    background:var(--vm); color:#fff; box-shadow:0 8px 22px rgba(152,36,36,.4); cursor:pointer; }
+  .lg-b:disabled{ opacity:.45; box-shadow:none; }
+  .lg-d{ font-size:12px; line-height:1.55; margin-top:20px; padding:12px 14px; border-radius:11px; text-align:left; }
+  .lg-d:empty{ display:none; }
+  .lg-d.ok{ background:rgba(255,255,255,.05); color:rgba(255,255,255,.4); text-align:center; }
+  .lg-d.err{ background:rgba(152,36,36,.18); border:1px solid rgba(152,36,36,.4); color:#f0a6a6; }
+
+  /* ===== Topo ===== */
+  .topo{ background:var(--rail); color:#fff; padding:calc(10px + var(--sat)) 16px 10px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; flex:0 0 auto; }
+  .tp-marca{ display:flex; align-items:center; gap:10px; }
+  .tp-marca img{ width:32px; height:32px; border-radius:9px; }
+  .tp-t{ font-family:'Poppins',sans-serif; font-size:15.5px; font-weight:600; line-height:1.1; }
+  .tp-s{ font-size:9.5px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:rgba(255,255,255,.36); }
+  .tp-sep{ width:1px; height:26px; background:rgba(255,255,255,.14); }
+  .tp-g{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .sel{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); color:#fff;
+    border-radius:9px; padding:8px 10px; font-size:13.5px; font-weight:600; max-width:250px; }
+  .sel option{ background:#232428; color:#fff; }
+  .sel:focus{ outline:0; border-color:var(--vm); }
+  .tp-dir{ margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .bt{ border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.07); color:#fff;
+    border-radius:9px; padding:8px 13px; font-size:13.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .bt:hover{ background:rgba(255,255,255,.13); }
+  .bt.on{ background:#d4930d; border-color:#d4930d; color:#231d09; }
+
+  /* ===== Corpo ===== */
+  .corpo{ flex:1; position:relative; overflow:hidden; display:flex; min-height:0; }
+  .canvas{ flex:1; position:relative; overflow:hidden; background:var(--content);
+    background-image:linear-gradient(rgba(75,75,85,.05) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(75,75,85,.05) 1px,transparent 1px);
+    background-size:28px 28px; touch-action:none; cursor:grab; }
+  .canvas.escuro{ background:#14151a;
+    background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px); }
+  .canvas.arrastando{ cursor:grabbing; }
+  .canvas.editando{ cursor:crosshair; }
+  .stage{ position:absolute; top:0; left:0; transform-origin:0 0; will-change:transform; }
+  .planta{ display:block; color:#5a5b66; }
+  .canvas.escuro .planta{ color:#e0483f; }
+  .planta path{ fill:currentColor; stroke:currentColor; stroke-width:.55; }
+  .pins{ position:absolute; inset:0; }
+
+  /* ===== Pino ===== */
+  .pin{ position:absolute; transform:translate(-50%,-50%) scale(var(--inv,1)); transform-origin:center;
+    width:34px; height:34px; cursor:pointer; }
+  .pin svg{ position:absolute; inset:0; width:34px; height:34px; overflow:visible; }
+  .pin .anel{ fill:none; stroke:rgba(0,0,0,.16); stroke-width:3.5; }
+  .canvas.escuro .pin .anel{ stroke:rgba(255,255,255,.2); }
+  .pin .prog{ fill:none; stroke:#2f8f46; stroke-width:3.5; stroke-linecap:round;
+    transform:rotate(-90deg); transform-origin:17px 17px; }
+  .pin .bola{ stroke:#fff; stroke-width:2.5; }
+  .canvas.escuro .pin .bola{ stroke:#14151a; }
+  .pin.st-vazio .bola{ fill:#f2f0ea; stroke:var(--st-vazio); stroke-width:3; }
+  .canvas.escuro .pin.st-vazio .bola{ fill:#3a3b42; stroke:#8e8c85; }
+  .pin.st-vazio .qtd::before{ content:'·'; font-size:22px; line-height:0; }
+  .pin.st-nao   .bola{ fill:var(--st-nao); }
+  .pin.st-and   .bola{ fill:var(--st-and); }
+  .pin.st-pau   .bola{ fill:var(--st-pau); }
+  .pin.st-fim   .bola{ fill:var(--st-fim); }
+  .pin.st-and::after{ content:''; position:absolute; inset:-6px; border-radius:50%;
+    border:2px solid var(--st-and); animation:pulso 1.8s ease-out infinite; pointer-events:none; }
+  @keyframes pulso{ 0%{ transform:scale(.75); opacity:.85 } 100%{ transform:scale(1.35); opacity:0 } }
+  @media (prefers-reduced-motion:reduce){ .pin.st-and::after{ animation:none; opacity:.4 } }
+  .pin .qtd{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:12.5px; font-weight:800; color:#fff; pointer-events:none; }
+  .pin.st-vazio .qtd{ color:var(--st-vazio); }
+  .pin.st-vazio .rot{ opacity:.75; }
+  .pin .rot{ position:absolute; top:38px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-size:11px; font-weight:700; background:rgba(255,255,255,.93); color:var(--tx);
+    padding:2px 7px; border-radius:6px; border:1px solid var(--ln); pointer-events:none; }
+  .canvas.escuro .pin .rot{ background:rgba(20,21,26,.92); color:#e8e8e2; border-color:rgba(255,255,255,.18); }
+  .pin .selo{ position:absolute; top:-5px; right:-7px; min-width:16px; height:16px; padding:0 4px;
+    border-radius:8px; background:var(--st-pau); color:#fff; font-size:10px; font-weight:800;
+    display:flex; align-items:center; justify-content:center; border:1.5px solid #fff; pointer-events:none; }
+  .pin.sel .bola{ stroke:var(--vm); stroke-width:4; }
+  .pin.arrastavel{ cursor:move; }
+
+  /* ===== Flutuantes ===== */
+  .flut{ position:absolute; left:14px; bottom:14px; display:flex; flex-direction:column; gap:10px; z-index:5; }
+  .cartao{ background:var(--sf); border:1px solid var(--ln); border-radius:12px; padding:11px 13px;
+    box-shadow:0 6px 18px rgba(0,0,0,.1); }
+  .lgd{ display:flex; flex-direction:column; gap:6px; }
+  .lgd-l{ display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:600; }
+  .lgd-b{ width:13px; height:13px; border-radius:50%; flex:0 0 auto; border:2px solid #fff; box-shadow:0 0 0 1px var(--ln); }
+  .resumo{ display:flex; gap:16px; }
+  .rz b{ display:block; font-family:'Poppins',sans-serif; font-size:19px; line-height:1.1; }
+  .rz span{ font-size:10.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--mut); }
+  .zoom{ position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:6px; z-index:5; }
+  .zb{ width:38px; height:38px; border-radius:10px; border:1px solid var(--ln); background:var(--sf);
+    font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.08);
+    display:flex; align-items:center; justify-content:center; }
+  .zb:hover{ background:#f6f5f0; }
+  .zb.pq{ font-size:11px; font-weight:800; }
+  .aviso{ position:absolute; top:14px; left:50%; transform:translateX(-50%); z-index:6; max-width:min(680px,92%);
+    text-align:center; background:#d4930d; color:#231d09; font-size:12.5px; font-weight:700;
+    padding:8px 15px; border-radius:9px; box-shadow:0 4px 14px rgba(0,0,0,.16); }
+  .dicavazia{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:10px; text-align:center; padding:24px; color:var(--mut); pointer-events:none; z-index:4; }
+  .dicavazia b{ font-family:'Poppins',sans-serif; font-size:18px; color:var(--tx); }
+  .canvas.escuro .dicavazia b{ color:#e8e8e2; }
+  .dicavazia p{ font-size:13.5px; max-width:380px; line-height:1.55; }
+
+  /* ===== Gaveta ===== */
+  .gav{ width:min(430px,92vw); flex:0 0 auto; background:var(--sf); border-left:1px solid var(--ln);
+    display:flex; flex-direction:column; box-shadow:-8px 0 24px rgba(0,0,0,.08); }
+  .gav-top{ padding:16px 18px 13px; border-bottom:1px solid var(--ln); }
+  .gav-x{ float:right; width:30px; height:30px; border-radius:8px; border:1px solid var(--ln); background:transparent;
+    font-size:16px; cursor:pointer; }
+  .gav-t{ font-family:'Poppins',sans-serif; font-size:18px; font-weight:600; }
+  .gav-sub{ font-size:12.5px; color:var(--mut); margin-top:3px; }
+  .gav-c{ flex:1; overflow-y:auto; padding:14px 18px 24px; }
+  .chip{ display:inline-flex; align-items:center; font-size:11px; font-weight:800; padding:3px 9px;
+    border-radius:20px; color:#fff; }
+  .c-nao{ background:var(--st-nao) } .c-and{ background:var(--st-and) }
+  .c-pau{ background:var(--st-pau) } .c-fim{ background:var(--st-fim) }
+  .c-lote{ background:#2f6fb5 } .c-proj{ background:#5c5c66 }
+  .barras{ display:flex; height:8px; border-radius:5px; overflow:hidden; background:#eceae3; margin:2px 0 5px; }
+  .barras i{ display:block; height:100%; }
+  .op{ border:1px solid var(--ln); border-radius:11px; padding:12px 13px; margin-bottom:10px; background:#fbfbf8; }
+  .op-h{ display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap; }
+  .op-n{ font-family:'Poppins',sans-serif; font-size:14.5px; font-weight:600; }
+  .op-l{ display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12.5px; margin-top:6px; }
+  .op-l dt{ color:var(--mut); font-weight:600; }
+  .op-l dd{ font-weight:600; }
+  .op-p{ margin-top:8px; padding-top:8px; border-top:1px dashed var(--ln); font-size:12px; color:var(--mut); line-height:1.6; }
+  .op-p b{ color:var(--tx); }
+  .nada{ text-align:center; padding:26px 10px; color:var(--mut); font-size:13.5px; line-height:1.6; }
+
+  /* ===== Modal ===== */
+  .fundo{ position:fixed; inset:0; background:rgba(28,29,32,.5); display:none; align-items:center;
+    justify-content:center; padding:18px; z-index:60; }
+  .fundo.on{ display:flex; }
+  .modal{ background:var(--sf); border-radius:16px; width:min(500px,100%); max-height:88vh;
+    display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.28); }
+  .m-top{ padding:18px 20px 14px; border-bottom:1px solid var(--ln); }
+  .m-t{ font-family:'Poppins',sans-serif; font-size:18px; font-weight:600; }
+  .m-c{ padding:16px 20px; overflow-y:auto; flex:1; }
+  .m-b{ padding:14px 20px; border-top:1px solid var(--ln); display:flex; gap:9px; justify-content:flex-end; }
+  .cmp{ margin-bottom:14px; }
+  .cmp label{ display:block; font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--mut); margin-bottom:6px; }
+  .cmp input,.cmp select{ width:100%; padding:11px 12px; border:1.5px solid var(--ln); border-radius:10px;
+    background:#fbfbf8; font-size:14.5px; font-weight:600; }
+  .cmp input:focus,.cmp select:focus{ outline:0; border-color:var(--vm); background:#fff; }
+  .cmp .dica{ font-size:12px; color:var(--mut); font-weight:500; margin-top:5px; line-height:1.5; }
+  .bd{ border:1px solid var(--ln); background:#fbfbf8; border-radius:10px; padding:9px; max-height:170px; overflow-y:auto; }
+  .bd label{ display:flex; align-items:center; gap:9px; padding:6px 5px; font-size:13.5px; font-weight:600;
+    text-transform:none; letter-spacing:0; color:var(--tx); margin:0; cursor:pointer; border-radius:7px; }
+  .bd label:hover{ background:#f0efe9; }
+  .bd input{ width:auto; }
+  .btl{ border:1px solid var(--ln); background:#fbfbf8; border-radius:10px; padding:11px 14px;
+    font-size:14.5px; font-weight:700; cursor:pointer; }
+  .btl:hover{ background:#f0efe9; }
+  .btl.pri{ background:var(--vm); border-color:var(--vm); color:#fff; }
+  .btl.pri:hover{ background:var(--vm2); }
+  .btl.per{ color:var(--vm); border-color:rgba(152,36,36,.3); }
+
+  .toast{ position:fixed; left:50%; transform:translateX(-50%) translateY(14px); bottom:calc(22px + var(--sab));
+    background:var(--tx); color:#fff; font-size:14px; font-weight:600; padding:13px 20px; border-radius:12px;
+    opacity:0; pointer-events:none; transition:opacity .22s,transform .22s; z-index:99; }
+  .toast.on{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .erroFaixa{ position:fixed; left:14px; right:14px; top:calc(var(--sat) + 62px); z-index:98;
+    background:#fdeaea; border:1px solid rgba(152,36,36,.35); color:#7f1e1e; border-radius:11px;
+    padding:12px 15px; font-size:13px; font-weight:600; line-height:1.6; box-shadow:0 6px 20px rgba(0,0,0,.14); }
+  .erroFaixa code{ background:rgba(152,36,36,.1); padding:1px 5px; border-radius:4px;
+    font-family:ui-monospace,monospace; font-size:12px; font-weight:600; }
+  .off{ position:fixed; top:var(--sat); left:0; right:0; background:var(--vm); color:#fff; font-size:12.5px;
+    font-weight:600; text-align:center; padding:7px; z-index:100; display:none; }
+  .off.on{ display:block; }
+
+  @media(max-width:860px){
+    .gav{ position:absolute; right:0; top:0; bottom:0; z-index:20; }
+    .tp-marca .tp-s{ display:none; }
+    .flut{ bottom:10px; left:10px; }
+    .resumo{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<section class="tela on" id="login">
+  <div class="lg">
+    <img class="lg-ic" src="https://i.postimg.cc/9MsBrnJd/app-icone.png" alt="Raldi">
+    <div class="lg-t">Raldi Mapa</div>
+    <div class="lg-s">Layout da fábrica</div>
+    <form class="lg-form" id="loginForm" onsubmit="entrar(); return false;">
+      <div class="lg-f"><label for="em">E-mail</label>
+        <input id="em" name="username" type="email" autocomplete="username" inputmode="email"
+          placeholder="seu@email.com" autocapitalize="off" spellcheck="false" required></div>
+      <div class="lg-f"><label for="se">Senha</label>
+        <input id="se" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required></div>
+      <div class="lg-e" id="lgErr"></div>
+      <button class="lg-b" id="lgBtn" type="submit">Entrar</button>
+    </form>
+    <div class="lg-d" id="lgDiag"></div>
+  </div>
+</section>
+
+<section class="tela" id="app">
+  <header class="topo">
+    <div class="tp-marca">
+      <img src="https://i.postimg.cc/9MsBrnJd/app-icone.png" alt="">
+      <div><div class="tp-t">Mapa da Fábrica</div><div class="tp-s">Raldi</div></div>
+    </div>
+    <div class="tp-sep"></div>
+    <div class="tp-g">
+      <select class="sel" id="selModo" onchange="setModo(this.value)">
+        <option value="projeto">Filtrar por projeto</option>
+        <option value="lote">Filtrar por lote</option>
+        <option value="tudo">Fábrica inteira</option>
+      </select>
+      <select class="sel" id="selAlvo" onchange="setAlvo(this.value)"></select>
+    </div>
+    <div class="tp-dir">
+      <button class="bt" onclick="diagnostico()" title="Testar leitura e escrita no banco">Diagnóstico</button>
+      <button class="bt" id="btEdit" onclick="alternarEdicao()">Editar pontos</button>
+      <button class="bt" onclick="sair()">Sair</button>
+    </div>
+  </header>
+
+  <div class="corpo">
+    <div class="canvas" id="canvas">
+      <div class="stage" id="stage">
+        <svg class="planta" id="planta" width="1330" height="977" viewBox="0 0 1330 977"
+             xmlns="http://www.w3.org/2000/svg" aria-label="Planta da fábrica">
+          <path d="M831 0h499v2h-499zM831 2h244v1h-244zM1083 2h247v1h-247zM893 3h7v1h-7zM1059 3h7v1h-7zM1059 7h7v1h-7zM1086 3h8v3h-8zM1086 8h8v1h-8zM894 6h6v2h-6zM1060 6h6v1h-6zM969 7h16v1h-16zM893 8h173v1h-173zM838 9h492v1h-492zM876 10h27v1h-27zM904 10h14v1h-14zM925 10h11v1h-11zM952 10h16v1h-16zM973 10h16v1h-16zM1024 10h9v1h-9zM1063 10h18v1h-18zM1112 10h6v1h-6zM1144 10h7v1h-7zM1190 10h13v1h-13zM1234 10h16v1h-16zM1258 10h46v1h-46zM1068 11h6v1h-6zM1064 12h10v1h-10zM510 34h323v1h-323zM509 35h324v1h-324zM508 36h325v1h-325zM611 37h9v2h-9zM781 38h9v2h-9zM886 39h11v4h-11zM886 44h11v2h-11zM512 43h329v1h-329zM511 44h330v1h-330zM337 53h158v1h-158zM337 54h157v1h-157zM366 55h9v1h-9zM448 55h25v1h-25zM474 55h13v1h-13zM367 56h7v1h-7zM367 59h7v2h-7zM478 56h8v2h-8zM478 59h8v2h-8zM336 61h162v1h-162zM336 62h161v1h-161zM434 68h60v2h-60zM434 102h60v2h-60zM510 68h59v1h-59zM510 103h59v1h-59zM584 68h59v1h-59zM584 103h59v1h-59zM658 68h60v2h-60zM658 102h60v2h-60zM732 68h60v2h-60zM732 102h60v2h-60zM806 68h59v1h-59zM806 103h59v1h-59zM509 69h61v1h-61zM509 102h61v1h-61zM583 69h61v1h-61zM583 102h61v1h-61zM805 69h61v1h-61zM564 70h6v1h-6zM712 70h6v1h-6zM732 70h6v1h-6zM786 70h6v1h-6zM886 75h76v1h-76zM886 76h77v1h-77zM358 77h60v2h-60zM358 113h60v1h-60zM358 127h60v2h-60zM358 161h60v2h-60zM358 177h60v2h-60zM358 210h60v2h-60zM358 225h60v2h-60zM358 259h60v1h-60zM886 77h15v1h-15zM886 78h13v1h-13zM886 79h6v1h-6zM887 81h13v2h-13zM944 82h19v1h-19zM1318 82h12v3h-12zM1318 86h12v3h-12zM1318 203h12v7h-12zM1318 417h12v1h-12zM1318 421h12v3h-12zM1318 504h12v3h-12zM1318 508h12v3h-12zM1318 513h12v2h-12zM1318 517h12v2h-12zM1318 521h12v2h-12zM1318 525h12v2h-12zM1318 529h12v2h-12zM1318 533h12v3h-12zM1318 537h12v3h-12zM1318 541h12v3h-12zM1318 546h12v2h-12zM1318 551h12v2h-12zM1318 554h12v3h-12zM1318 559h12v2h-12zM887 83h76v1h-76zM888 84h75v1h-75zM805 102h60v1h-60zM359 114h59v1h-59zM359 176h59v1h-59zM960 115h17v1h-17zM980 115h67v1h-67zM1048 115h19v1h-19zM960 116h107v1h-107zM961 117h106v1h-106zM973 118h10v1h-10zM973 123h10v1h-10zM1042 118h10v1h-10zM1042 123h10v1h-10zM974 119h8v4h-8zM1043 121h8v2h-8zM953 124h121v2h-121zM975 126h7v1h-7zM18 179h40v1h-40zM71 179h35v1h-35zM112 179h8v1h-8zM136 179h12v1h-12zM163 179h8v1h-8zM178 179h10v1h-10zM210 179h13v1h-13zM16 180h208v1h-208zM15 181h209v1h-209zM15 182h202v1h-202zM218 182h7v1h-7zM14 187h11v1h-11zM221 187h7v1h-7zM221 497h7v1h-7zM15 188h213v2h-213zM15 495h213v2h-213zM15 504h213v1h-213zM15 190h12v1h-12zM212 190h16v1h-16zM15 191h9v1h-9zM15 243h9v2h-9zM15 307h9v3h-9zM15 367h9v1h-9zM15 494h9v1h-9zM212 191h12v1h-12zM212 494h12v1h-12zM367 224h11v1h-11zM14 242h9v1h-9zM14 247h9v1h-9zM14 305h9v2h-9zM14 371h9v1h-9zM14 443h9v1h-9zM15 245h8v2h-8zM15 310h8v2h-8zM15 491h8v3h-8zM368 258h25v1h-25zM406 258h12v1h-12zM359 260h58v1h-58zM954 261h67v1h-67zM954 377h67v2h-67zM954 262h68v2h-68zM954 376h68v1h-68zM551 270h273v1h-273zM550 271h275v2h-275zM550 279h275v2h-275zM603 273h8v2h-8zM603 276h8v2h-8zM749 273h9v1h-9zM749 274h8v1h-8zM749 277h8v1h-8zM602 278h9v1h-9zM748 278h10v1h-10zM809 278h7v1h-7zM550 281h13v1h-13zM601 281h6v1h-6zM747 281h7v1h-7zM810 281h15v1h-15zM550 282h11v1h-11zM550 339h11v5h-11zM550 345h11v4h-11zM817 282h8v2h-8zM813 284h12v3h-12zM336 293h12v3h-12zM336 298h12v3h-12zM820 298h6v1h-6zM813 299h63v1h-63zM813 478h63v1h-63zM818 300h58v1h-58zM821 301h9v1h-9zM821 306h7v1h-7zM813 307h58v1h-58zM813 469h58v2h-58zM813 308h59v1h-59zM954 316h8v1h-8zM953 317h8v3h-8zM953 322h8v3h-8zM953 321h9v1h-9zM440 323h38v2h-38zM440 395h38v2h-38zM440 327h12v1h-12zM440 328h33v1h-33zM440 329h34v1h-34zM336 359h8v2h-8zM336 362h8v1h-8zM333 363h16v1h-16zM333 364h19v1h-19zM333 365h6v2h-6zM333 368h6v1h-6zM346 365h10v1h-10zM346 366h14v1h-14zM346 367h18v1h-18zM14 368h10v3h-10zM14 440h10v3h-10zM346 368h12v1h-12zM360 368h6v1h-6zM350 369h12v1h-12zM364 369h7v1h-7zM333 370h7v1h-7zM346 370h7v1h-7zM357 370h17v1h-17zM333 371h20v1h-20zM360 371h18v1h-18zM333 372h14v1h-14zM364 372h17v1h-17zM333 373h10v3h-10zM333 465h10v3h-10zM369 373h16v1h-16zM373 374h15v1h-15zM377 375h15v1h-15zM378 376h17v1h-17zM385 377h14v1h-14zM392 378h10v1h-10zM396 379h10v1h-10zM397 380h12v1h-12zM404 381h8v1h-8zM406 382h9v1h-9zM407 383h11v1h-11zM442 397h7v1h-7zM452 397h12v1h-12zM0 407h18v2h-18zM0 413h18v2h-18zM0 419h18v2h-18zM0 425h18v2h-18zM0 431h18v2h-18zM0 438h18v1h-18zM0 444h18v2h-18zM0 450h18v2h-18zM0 457h18v1h-18zM0 463h18v1h-18zM0 469h18v1h-18zM340 407h102v2h-102zM340 412h102v1h-102zM953 407h377v2h-377zM1058 409h8v2h-8zM1058 412h8v2h-8zM1103 409h7v1h-7zM1103 412h7v3h-7zM1221 409h8v1h-8zM1221 413h8v1h-8zM340 411h98v1h-98zM953 414h12v1h-12zM1058 414h9v1h-9zM1221 414h9v1h-9zM953 415h99v2h-99zM1058 415h263v1h-263zM1058 597h263v1h-263zM1058 603h263v2h-263zM1058 416h272v1h-272zM961 417h91v1h-91zM961 597h91v1h-91zM1009 418h7v1h-7zM1025 418h27v1h-27zM1009 421h43v1h-43zM1009 524h43v1h-43zM1008 422h44v1h-44zM1008 523h44v1h-44zM0 439h11v1h-11zM0 456h11v1h-11zM0 458h11v1h-11zM0 464h11v1h-11zM13 439h10v1h-10zM4 462h7v1h-7zM433 466h9v2h-9zM333 468h164v1h-164zM503 468h32v1h-32zM549 468h12v1h-12zM333 469h228v2h-228zM333 477h228v1h-228zM1003 469h8v3h-8zM1003 475h8v3h-8zM1 470h17v1h-17zM341 471h15v1h-15zM496 471h8v3h-8zM496 475h8v2h-8zM344 472h12v1h-12zM344 476h12v1h-12zM344 473h6v3h-6zM828 476h6v1h-6zM813 477h64v1h-64zM334 478h227v2h-227zM213 493h7v1h-7zM210 499h6v4h-6zM222 499h6v3h-6zM30 503h7v1h-7zM65 503h11v1h-11zM153 503h12v1h-12zM193 503h8v1h-8zM203 503h14v1h-14zM220 503h8v1h-8zM15 505h212v1h-212zM1019 525h9v1h-9zM1036 525h16v1h-16zM1019 527h7v1h-7zM1041 527h11v1h-11zM1003 528h49v2h-49zM1048 530h13v1h-13zM1049 531h12v1h-12zM1049 534h12v2h-12zM1049 538h12v10h-12zM1049 551h12v2h-12zM1049 555h12v2h-12zM1049 559h12v2h-12zM1049 563h12v2h-12zM1049 568h12v2h-12zM1049 571h12v3h-12zM1049 576h12v3h-12zM1049 580h12v6h-12zM1318 550h6v1h-6zM1049 567h7v1h-7zM818 598h11v1h-11zM834 598h21v1h-21zM869 598h183v1h-183zM1058 598h265v1h-265zM1324 598h6v1h-6zM813 599h251v2h-251zM1316 599h14v2h-14zM863 601h10v1h-10zM863 606h10v1h-10zM949 601h7v1h-7zM949 606h7v1h-7zM949 974h7v1h-7zM961 601h6v1h-6zM1045 601h7v1h-7zM1058 601h6v1h-6zM1058 606h6v1h-6zM950 602h6v2h-6zM1058 602h7v1h-7zM863 605h9v1h-9zM1046 605h6v2h-6zM813 607h517v2h-517zM988 751h8v1h-8zM942 752h378v1h-378zM942 976h378v1h-378zM941 753h379v1h-379zM941 761h379v2h-379zM941 967h379v2h-379zM941 975h379v1h-379zM948 754h10v1h-10zM1304 754h16v1h-16zM941 763h11v2h-11zM941 815h11v6h-11zM941 913h11v1h-11zM941 917h11v2h-11zM941 964h11v2h-11zM928 854h15v2h-15zM928 861h15v2h-15zM928 867h15v2h-15zM928 874h15v1h-15zM928 880h15v2h-15zM928 887h15v2h-15zM928 894h15v1h-15zM928 899h15v1h-15zM928 905h15v1h-15zM933 873h10v1h-10zM928 893h16v1h-16zM928 909h16v2h-16zM928 921h16v2h-16zM927 900h16v1h-16zM927 904h16v1h-16zM928 915h24v2h-24zM941 966h15v1h-15zM1172 966h13v1h-13zM1304 966h7v1h-7zM949 969h6v1h-6zM949 972h6v2h-6zM1172 969h9v1h-9zM1304 969h6v2h-6zM1304 972h6v2h-6zM1172 970h8v1h-8zM1172 973h8v1h-8zM1170 974h11v1h-11zM1303 974h7v1h-7zM14 197h1v45h-1zM14 248h1v9h-1zM14 263h1v42h-1zM14 314h1v53h-1zM14 372h4v35h-4zM351 372h2v35h-2zM360 372h2v35h-2zM14 471h1v16h-1zM15 192h3v50h-3zM21 192h2v50h-2zM15 248h3v57h-3zM21 248h2v57h-2zM15 312h3v55h-3zM21 312h2v55h-2zM15 471h3v20h-3zM15 497h2v7h-2zM22 497h2v7h-2zM20 215h1v6h-1zM20 230h1v12h-1zM20 278h1v17h-1zM20 296h1v9h-1zM20 359h1v8h-1zM20 372h1v6h-1zM20 391h1v14h-1zM20 407h1v14h-1zM20 424h1v7h-1zM20 444h1v13h-1zM20 471h1v15h-1zM21 372h2v67h-2zM21 444h2v47h-2zM213 192h3v301h-3zM222 192h2v302h-2zM225 191h3v304h-3zM333 387h1v13h-1zM333 404h1v38h-1zM333 457h1v8h-1zM333 471h3v6h-3zM434 471h2v6h-2zM440 471h2v6h-2zM547 471h2v6h-2zM550 471h2v6h-2zM558 471h3v6h-3zM813 471h3v6h-3zM822 471h3v6h-3zM334 376h2v89h-2zM336 73h1v215h-1zM336 303h1v56h-1zM337 55h2v6h-2zM346 55h2v6h-2zM337 63h2v230h-2zM346 63h2v230h-2zM337 301h2v58h-2zM340 376h1v22h-1zM340 417h1v25h-1zM340 451h1v14h-1zM341 376h2v31h-2zM341 413h2v52h-2zM345 137h1v6h-1zM345 207h1v8h-1zM345 239h1v10h-1zM345 255h1v12h-1zM345 311h1v6h-1zM345 354h1v7h-1zM346 301h2v62h-2zM358 79h2v34h-2zM416 79h2v34h-2zM358 129h2v32h-2zM416 129h2v32h-2zM358 179h2v31h-2zM416 179h2v31h-2zM358 227h2v32h-2zM369 374h2v33h-2zM379 377h2v30h-2zM388 378h2v29h-2zM398 381h2v26h-2zM407 384h3v23h-3zM416 384h2v23h-2zM416 227h2v31h-2zM434 70h2v32h-2zM492 70h2v32h-2zM509 70h2v32h-2zM584 70h2v32h-2zM642 70h2v32h-2zM658 70h2v32h-2zM805 70h3v32h-3zM863 70h2v32h-2zM434 413h2v53h-2zM440 413h2v53h-2zM440 330h3v65h-3zM472 330h1v65h-1zM473 330h1v8h-1zM473 339h1v53h-1zM476 325h2v70h-2zM550 273h2v6h-2zM559 273h2v6h-2zM822 273h3v6h-3zM550 283h2v56h-2zM558 283h3v56h-3zM550 349h2v119h-2zM558 349h3v119h-3zM552 319h1v8h-1zM567 93h1v9h-1zM568 71h2v31h-2zM716 71h2v31h-2zM732 71h2v31h-2zM790 71h2v31h-2zM583 70h1v8h-1zM812 452h1v7h-1zM813 287h3v12h-3zM813 300h3v7h-3zM813 309h3v160h-3zM822 309h3v160h-3zM870 309h1v160h-1zM813 479h3v120h-3zM813 601h3v6h-3zM822 601h3v6h-3zM1328 601h2v6h-2zM820 287h5v11h-5zM822 479h3v119h-3zM830 3h3v31h-3zM838 3h3v6h-3zM887 3h2v6h-2zM1072 3h2v6h-2zM1318 3h3v6h-3zM1328 3h2v6h-2zM838 10h1v11h-1zM838 33h1v8h-1zM839 10h2v33h-2zM841 10h1v29h-1zM865 70h1v19h-1zM871 452h1v12h-1zM874 301h2v176h-2zM876 301h1v173h-1zM886 11h3v28h-3zM894 11h3v28h-3zM886 46h3v29h-3zM894 46h3v29h-3zM893 63h1v12h-1zM941 754h2v7h-2zM941 765h2v50h-2zM949 765h3v50h-3zM941 821h2v33h-2zM941 923h3v41h-3zM941 969h3v6h-3zM1317 969h3v6h-3zM943 791h1v6h-1zM943 802h1v13h-1zM943 841h1v11h-1zM949 755h3v6h-3zM1306 755h4v6h-4zM1317 755h3v6h-3zM949 821h3v92h-3zM949 919h3v45h-3zM953 85h2v39h-2zM953 417h2v181h-2zM954 264h2v52h-2zM959 264h2v52h-2zM954 325h2v51h-2zM959 325h2v51h-2zM955 103h1v13h-1zM955 559h1v9h-1zM960 85h3v30h-3zM961 282h1v21h-1zM961 326h1v28h-1zM961 367h1v9h-1zM961 418h3v179h-3zM1003 418h2v51h-2zM1003 478h2v50h-2zM1008 423h1v11h-1zM1008 439h1v30h-1zM1008 478h3v45h-3zM1009 423h2v46h-2zM1019 264h3v112h-3zM1049 423h1v6h-1zM1049 586h3v11h-3zM1058 586h2v11h-2zM1050 409h2v6h-2zM1316 409h1v6h-1zM1050 423h2v100h-2zM1058 417h3v113h-3zM1060 588h1v9h-1zM1063 108h1v7h-1zM1064 13h3v102h-3zM1072 13h2v111h-2zM1307 773h1v7h-1zM1307 825h1v38h-1zM1307 880h1v23h-1zM1307 905h1v10h-1zM1307 926h1v40h-1zM1308 763h2v203h-2zM1317 763h3v204h-3zM1318 17h1v65h-1zM1318 102h1v101h-1zM1318 210h1v152h-1zM1318 364h1v43h-1zM1318 431h1v73h-1zM1318 585h1v12h-1zM1319 10h1v72h-1zM1328 10h2v72h-2zM1319 89h1v114h-1zM1328 89h2v114h-2zM1319 210h1v197h-1zM1328 210h2v197h-2zM1319 424h1v80h-1zM1328 424h2v80h-2zM1319 561h1v36h-1zM1320 23h1v11h-1zM1320 47h1v25h-1zM1320 89h1v42h-1zM1320 145h1v58h-1zM1320 210h1v172h-1zM1320 385h1v22h-1zM1320 435h1v24h-1zM1320 483h1v21h-1zM1320 561h1v15h-1zM1320 582h1v15h-1zM1328 409h2v7h-2zM1328 561h2v37h-2zM841 3h1v1h-1zM841 5h1v4h-1zM841 41h1v1h-1zM1327 3h1v1h-1zM1327 8h1v1h-1zM1327 89h1v1h-1zM1327 202h1v1h-1zM1327 210h1v1h-1zM1327 406h1v1h-1zM1327 601h1v4h-1zM894 4h5v1h-5zM894 79h5v2h-5zM1062 4h4v1h-4zM894 5h3v1h-3zM898 5h1v1h-1zM1063 5h3v1h-3zM1063 118h3v1h-3zM1063 411h3v1h-3zM1086 6h3v2h-3zM1091 6h3v2h-3zM886 8h1v1h-1zM889 8h1v1h-1zM889 46h1v1h-1zM1071 8h1v1h-1zM1071 13h1v1h-1zM842 10h1v1h-1zM844 10h3v1h-3zM848 10h4v1h-4zM862 10h3v1h-3zM1050 10h4v1h-4zM1087 10h1v1h-1zM1090 10h2v1h-2zM1096 10h4v1h-4zM1128 10h5v1h-5zM1134 10h1v1h-1zM1152 10h1v1h-1zM1152 751h1v1h-1zM1154 10h1v1h-1zM1204 10h1v1h-1zM1206 10h1v1h-1zM1256 10h1v1h-1zM1318 10h1v5h-1zM1318 89h1v1h-1zM1318 424h1v1h-1zM1318 561h1v1h-1zM1320 10h2v1h-2zM1326 10h2v1h-2zM893 11h1v1h-1zM893 34h1v5h-1zM893 46h1v2h-1zM1063 11h4v1h-4zM1320 11h1v1h-1zM1320 73h1v1h-1zM1320 80h1v2h-1zM1320 424h1v2h-1zM1320 431h1v1h-1zM1320 468h1v3h-1zM1320 474h1v2h-1zM1063 13h1v2h-1zM1068 13h2v1h-2zM838 29h1v3h-1zM838 42h1v1h-1zM507 37h3v1h-3zM507 48h3v1h-3zM780 37h4v1h-4zM786 37h4v1h-4zM786 40h4v3h-4zM506 38h3v1h-3zM506 49h3v1h-3zM505 39h3v1h-3zM611 39h4v1h-4zM611 42h4v1h-4zM616 39h4v1h-4zM504 40h3v1h-3zM504 51h3v1h-3zM611 40h3v2h-3zM617 40h3v3h-3zM781 40h3v3h-3zM504 41h2v1h-2zM504 52h2v1h-2zM503 42h2v1h-2zM503 53h2v1h-2zM502 43h2v1h-2zM502 54h2v1h-2zM886 43h5v1h-5zM892 43h5v1h-5zM501 44h2v1h-2zM501 55h2v1h-2zM500 45h2v1h-2zM500 56h2v1h-2zM510 45h3v1h-3zM499 46h3v1h-3zM509 46h3v1h-3zM498 47h2v1h-2zM498 58h2v1h-2zM508 47h3v1h-3zM497 48h3v1h-3zM496 49h3v1h-3zM495 50h3v1h-3zM506 50h2v1h-2zM494 51h3v1h-3zM342 52h3v1h-3zM352 52h4v1h-4zM352 473h4v3h-4zM370 52h3v1h-3zM493 52h3v1h-3zM339 55h1v1h-1zM345 55h1v1h-1zM345 63h1v1h-1zM345 150h1v3h-1zM345 286h1v3h-1zM345 301h1v1h-1zM345 335h1v4h-1zM348 55h1v1h-1zM348 63h1v1h-1zM348 362h1v1h-1zM336 56h1v3h-1zM336 60h1v1h-1zM336 292h1v1h-1zM336 301h1v1h-1zM367 57h3v2h-3zM372 57h2v2h-2zM499 57h2v1h-2zM478 58h3v1h-3zM483 58h3v1h-3zM497 59h2v1h-2zM496 60h2v1h-2zM496 474h2v1h-2zM436 70h1v1h-1zM436 413h1v2h-1zM436 463h1v3h-1zM490 70h2v1h-2zM511 70h2v1h-2zM586 70h2v1h-2zM641 70h1v1h-1zM660 70h1v1h-1zM862 70h1v1h-1zM567 71h1v3h-1zM948 77h4v1h-4zM948 914h4v1h-4zM958 77h5v1h-5zM960 78h3v4h-3zM360 79h1v1h-1zM360 112h1v1h-1zM360 129h1v1h-1zM887 80h4v1h-4zM951 81h2v1h-2zM955 85h1v1h-1zM955 117h1v2h-1zM955 122h1v2h-1zM955 417h1v1h-1zM955 458h1v4h-1zM955 474h1v4h-1zM955 479h1v2h-1zM955 593h1v5h-1zM1318 85h5v1h-5zM1318 418h5v3h-5zM1318 516h5v1h-5zM1325 85h5v1h-5zM1325 418h5v1h-5zM1325 550h5v1h-5zM1321 89h1v1h-1zM1321 210h1v1h-1zM583 93h1v4h-1zM583 101h1v1h-1zM511 101h1v1h-1zM715 101h1v1h-1zM415 112h1v1h-1zM415 129h1v1h-1zM1043 119h4v1h-4zM1048 119h3v2h-3zM1043 120h3v1h-3zM1049 126h1v1h-1zM1049 409h1v1h-1zM1049 412h1v3h-1zM1049 522h1v1h-1zM1055 126h3v1h-3zM418 155h1v1h-1zM418 403h1v4h-1zM14 183h4v4h-4zM14 409h4v4h-4zM14 415h4v4h-4zM14 421h4v3h-4zM14 427h4v4h-4zM14 433h4v4h-4zM14 446h4v4h-4zM14 452h4v4h-4zM14 459h4v4h-4zM14 465h4v4h-4zM21 183h3v4h-3zM212 183h4v5h-4zM212 498h4v1h-4zM221 183h5v1h-5zM222 184h5v2h-5zM222 186h2v1h-2zM222 498h2v1h-2zM222 502h2v1h-2zM225 186h3v1h-3zM225 498h3v1h-3zM225 502h3v1h-3zM28 190h1v1h-1zM30 190h1v1h-1zM209 190h1v1h-1zM18 192h1v1h-1zM18 241h1v1h-1zM18 366h1v1h-1zM18 372h1v1h-1zM20 192h1v2h-1zM20 223h1v2h-1zM20 228h1v1h-1zM20 248h1v5h-1zM20 347h1v4h-1zM20 434h1v5h-1zM20 468h1v1h-1zM216 192h1v1h-1zM216 492h1v1h-1zM221 192h1v1h-1zM221 493h1v1h-1zM394 224h1v1h-1zM394 258h1v1h-1zM396 224h4v1h-4zM402 224h3v1h-3zM408 224h3v1h-3zM416 224h1v1h-1zM360 258h2v1h-2zM360 409h2v2h-2zM396 258h1v1h-1zM398 258h1v1h-1zM400 258h1v1h-1zM402 258h1v1h-1zM404 258h1v1h-1zM961 264h1v2h-1zM961 274h1v1h-1zM961 277h1v1h-1zM961 311h1v5h-1zM1018 264h1v1h-1zM1018 375h1v1h-1zM561 273h3v1h-3zM813 273h3v4h-3zM813 282h3v2h-3zM603 275h2v1h-2zM607 275h4v1h-4zM749 275h3v2h-3zM755 275h2v2h-2zM558 276h1v3h-1zM810 277h1v1h-1zM812 277h4v1h-4zM552 278h1v1h-1zM552 283h1v1h-1zM556 283h1v1h-1zM336 296h4v2h-4zM341 296h3v2h-3zM341 361h3v1h-3zM345 296h3v2h-3zM856 301h1v1h-1zM872 301h2v1h-2zM822 302h3v4h-3zM816 306h1v1h-1zM858 306h3v1h-3zM865 306h5v1h-5zM869 309h1v1h-1zM871 309h1v1h-1zM871 311h1v3h-1zM871 369h1v4h-1zM871 465h1v2h-1zM953 320h4v1h-4zM959 320h3v1h-3zM440 325h3v2h-3zM953 325h1v2h-1zM465 327h1v1h-1zM467 327h5v1h-5zM550 344h5v1h-5zM556 344h5v1h-5zM336 361h3v1h-3zM333 367h3v1h-3zM333 369h3v1h-3zM337 367h2v1h-2zM337 369h2v1h-2zM346 369h3v1h-3zM371 374h1v1h-1zM371 403h1v4h-1zM333 376h1v4h-1zM333 381h1v1h-1zM390 378h1v1h-1zM390 406h1v1h-1zM397 381h1v1h-1zM397 402h1v5h-1zM413 384h3v1h-3zM473 393h1v2h-1zM340 399h1v1h-1zM340 402h1v5h-1zM340 413h1v2h-1zM350 406h1v1h-1zM353 406h1v1h-1zM378 406h1v1h-1zM381 406h1v1h-1zM0 409h2v4h-2zM0 415h2v3h-2zM0 421h2v3h-2zM0 428h2v2h-2zM0 434h2v3h-2zM0 440h2v4h-2zM0 447h2v3h-2zM0 453h2v3h-2zM0 459h2v3h-2zM0 465h2v3h-2zM341 409h2v2h-2zM351 409h2v2h-2zM369 409h3v2h-3zM378 409h3v1h-3zM388 409h2v2h-2zM397 409h3v2h-3zM407 409h3v2h-3zM416 409h3v2h-3zM434 409h2v2h-2zM440 409h2v2h-2zM953 409h3v1h-3zM961 409h3v5h-3zM961 602h3v5h-3zM1315 409h1v1h-1zM1315 414h1v1h-1zM1317 409h1v1h-1zM1317 412h1v2h-1zM379 410h2v1h-2zM953 410h2v4h-2zM1103 410h3v2h-3zM1108 410h2v2h-2zM1221 410h4v1h-4zM1221 412h4v1h-4zM1226 410h3v3h-3zM439 411h3v1h-3zM1058 411h3v1h-3zM1058 532h3v1h-3zM1058 536h3v1h-3zM1058 549h3v2h-3zM1058 553h3v1h-3zM1058 557h3v2h-3zM1058 562h3v1h-3zM1058 565h3v2h-3zM1058 570h3v1h-3zM1058 574h3v2h-3zM1058 579h3v1h-3zM1058 605h3v1h-3zM1221 411h3v1h-3zM343 413h2v1h-2zM347 413h1v1h-1zM433 413h1v1h-1zM439 413h1v3h-1zM439 465h1v1h-1zM1317 414h3v1h-3zM8 415h2v3h-2zM8 421h2v3h-2zM8 427h2v4h-2zM8 433h2v4h-2zM8 440h2v4h-2zM8 447h2v3h-2zM8 453h2v3h-2zM8 459h2v3h-2zM8 465h2v4h-2zM0 418h3v1h-3zM0 424h3v1h-3zM0 427h3v1h-3zM0 430h3v1h-3zM0 433h3v1h-3zM0 437h3v1h-3zM0 446h3v1h-3zM0 452h3v1h-3zM0 462h3v1h-3zM0 468h3v1h-3zM7 418h3v1h-3zM7 437h3v1h-3zM7 446h3v1h-3zM1002 418h1v1h-1zM1005 418h2v1h-2zM1048 419h4v1h-4zM1326 419h4v2h-4zM1049 420h3v1h-3zM1049 532h3v1h-3zM1049 536h3v2h-3zM1049 549h3v2h-3zM1049 553h3v2h-3zM1049 557h3v2h-3zM1049 562h3v1h-3zM1049 565h3v2h-3zM1049 570h3v1h-3zM1049 574h3v2h-3zM1049 579h3v1h-3zM7 424h4v1h-4zM7 452h4v1h-4zM13 424h5v1h-5zM13 437h5v1h-5zM13 456h5v1h-5zM13 458h5v1h-5zM13 464h5v1h-5zM812 440h1v2h-1zM1005 468h1v1h-1zM1005 478h1v1h-1zM1005 526h1v2h-1zM549 471h1v3h-1zM549 475h1v2h-1zM825 471h2v1h-2zM825 476h2v1h-2zM1002 472h4v3h-4zM1007 472h4v1h-4zM1008 473h3v2h-3zM500 474h4v1h-4zM876 475h1v2h-1zM873 476h1v1h-1zM17 497h1v1h-1zM20 497h2v1h-2zM212 497h5v1h-5zM14 500h1v1h-1zM17 503h2v1h-2zM24 503h1v1h-1zM53 503h1v1h-1zM63 503h1v1h-1zM188 503h1v1h-1zM1318 507h3v1h-3zM1318 511h3v1h-3zM1318 515h3v1h-3zM1318 519h3v1h-3zM1318 523h3v1h-3zM1318 527h3v1h-3zM1318 531h3v2h-3zM1318 536h3v1h-3zM1318 540h3v1h-3zM1318 544h3v1h-3zM1318 549h3v1h-3zM1318 557h3v2h-3zM1328 507h2v1h-2zM1328 511h2v1h-2zM1328 532h2v1h-2zM1328 549h2v1h-2zM1318 512h4v1h-4zM1318 520h4v1h-4zM1318 524h4v1h-4zM1318 528h4v1h-4zM1318 545h4v1h-4zM1318 548h4v1h-4zM1318 553h4v1h-4zM1327 512h3v1h-3zM1327 515h3v2h-3zM1327 519h3v2h-3zM1327 523h3v2h-3zM1327 527h3v2h-3zM1327 531h3v1h-3zM1327 536h3v1h-3zM1327 540h3v1h-3zM1327 544h3v2h-3zM1327 548h3v1h-3zM1327 553h3v1h-3zM1327 557h3v2h-3zM1010 525h4v1h-4zM1010 527h4v1h-4zM1047 526h5v1h-5zM1047 602h5v3h-5zM1049 533h4v1h-4zM1049 548h4v1h-4zM1049 561h4v1h-4zM1057 533h4v1h-4zM1057 537h4v1h-4zM1057 548h4v1h-4zM1057 554h4v1h-4zM1057 561h4v1h-4zM1057 567h4v1h-4zM964 596h1v1h-1zM952 597h1v1h-1zM859 598h3v1h-3zM825 601h1v1h-1zM1316 601h5v2h-5zM1316 606h5v1h-5zM863 602h4v1h-4zM868 602h4v1h-4zM863 603h3v2h-3zM869 603h3v2h-3zM950 604h5v2h-5zM1062 605h2v1h-2zM1316 605h2v1h-2zM1319 605h2v1h-2zM949 609h3v1h-3zM1044 609h4v1h-4zM948 751h1v1h-1zM948 821h1v1h-1zM948 963h1v1h-1zM950 751h2v1h-2zM962 751h4v1h-4zM1037 751h3v1h-3zM1135 751h1v1h-1zM1288 751h1v1h-1zM1304 751h2v1h-2zM1304 971h2v1h-2zM1308 751h4v1h-4zM1313 751h2v1h-2zM943 754h1v5h-1zM943 760h1v1h-1zM943 765h1v3h-1zM943 822h1v2h-1zM943 826h1v5h-1zM943 853h1v1h-1zM1288 754h5v1h-5zM952 755h2v1h-2zM1307 763h1v4h-1zM946 765h1v1h-1zM943 821h2v1h-2zM928 853h2v1h-2zM928 856h2v1h-2zM928 860h2v1h-2zM928 863h2v1h-2zM928 866h2v1h-2zM928 869h2v4h-2zM928 876h2v4h-2zM928 883h2v1h-2zM928 886h2v1h-2zM928 889h2v1h-2zM928 895h2v4h-2zM928 901h2v2h-2zM928 906h2v3h-2zM928 911h2v4h-2zM928 917h2v4h-2zM933 856h4v1h-4zM940 856h3v1h-3zM940 860h3v1h-3zM940 869h3v1h-3zM940 882h3v1h-3zM940 889h3v1h-3zM940 895h3v1h-3zM940 901h3v1h-3zM940 903h3v1h-3zM940 906h3v1h-3zM928 857h1v3h-1zM928 864h1v2h-1zM928 884h1v2h-1zM928 890h1v3h-1zM934 857h2v3h-2zM934 863h2v4h-2zM934 870h2v3h-2zM934 876h2v4h-2zM934 883h2v4h-2zM934 889h2v4h-2zM934 896h2v3h-2zM934 901h2v3h-2zM934 907h2v2h-2zM934 912h2v2h-2zM934 919h2v1h-2zM941 857h2v3h-2zM941 863h2v4h-2zM941 870h2v3h-2zM941 876h2v4h-2zM941 883h2v4h-2zM941 890h2v3h-2zM941 896h2v3h-2zM941 902h2v1h-2zM941 907h2v1h-2zM934 860h3v1h-3zM934 869h3v1h-3zM934 895h3v1h-3zM934 906h3v1h-3zM934 911h3v1h-3zM934 914h3v1h-3zM934 917h3v2h-3zM934 920h3v1h-3zM928 873h3v1h-3zM928 875h3v1h-3zM928 882h3v1h-3zM933 875h5v1h-5zM933 882h5v1h-5zM939 875h4v1h-4zM927 903h3v1h-3zM941 908h3v1h-3zM941 911h3v2h-3zM941 920h3v1h-3zM947 912h2v1h-2zM941 914h5v1h-5zM941 919h4v1h-4zM944 963h1v1h-1zM1083 966h2v1h-2zM1189 966h3v1h-3zM1316 966h1v1h-1zM1316 974h1v1h-1zM949 970h5v2h-5zM1172 971h3v2h-3zM1178 971h2v1h-2zM1307 971h3v1h-3zM1177 972h3v1h-3z"/>
+        </svg>
+        <div class="pins" id="pins"></div>
+      </div>
+      <div class="dicavazia" id="dicavazia" style="display:none"></div>
+      <div class="aviso" id="aviso" style="display:none"></div>
+      <div class="flut">
+        <div class="cartao resumo" id="resumo"></div>
+        <div class="cartao lgd">
+          <div class="lgd-l"><i class="lgd-b" style="background:transparent;border:2px dashed #b9b7ae;box-shadow:none"></i>Sem OP para este filtro</div>
+          <div class="lgd-l"><i class="lgd-b" style="background:#8d8b83"></i>Não iniciado</div>
+          <div class="lgd-l"><i class="lgd-b" style="background:#d4930d"></i>Em andamento</div>
+          <div class="lgd-l"><i class="lgd-b" style="background:#7a6ea8"></i>Pausado</div>
+          <div class="lgd-l"><i class="lgd-b" style="background:#2f8f46"></i>Concluído</div>
+        </div>
+      </div>
+      <div class="zoom">
+        <button class="zb" onclick="zoomBotao(1.3)" title="Aproximar">+</button>
+        <button class="zb" onclick="zoomBotao(1/1.3)" title="Afastar">−</button>
+        <button class="zb pq" onclick="enquadrar()" title="Enquadrar a planta">FIT</button>
+        <button class="zb pq" onclick="alternarFundo()" title="Fundo claro ou escuro">☾</button>
+      </div>
+    </div>
+    <aside class="gav" id="gav" style="display:none">
+      <div class="gav-top">
+        <button class="gav-x" onclick="fecharGaveta()">✕</button>
+        <div class="gav-t" id="gavT">—</div>
+        <div class="gav-sub" id="gavS"></div>
+      </div>
+      <div class="gav-c" id="gavC"></div>
+    </aside>
+  </div>
+</section>
+
+<div class="fundo" id="fundo" onclick="if(event.target===this) fecharModal()">
+  <div class="modal">
+    <div class="m-top"><div class="m-t" id="mT">—</div></div>
+    <div class="m-c" id="mC"></div>
+    <div class="m-b" id="mB"></div>
+  </div>
+</div>
+
+<div class="erroFaixa" id="erroFaixa" style="display:none"></div>
+<div class="off" id="off">Sem conexão — os dados podem estar desatualizados</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== Firebase (mesmo projeto dos outros sistemas) ===================== */
+firebase.initializeApp({
+  apiKey:"AIzaSyAvvGRa0w5k0mOAmac0IFriGHj0Z1M2gLk",
+  authDomain:"raldi-sistemav1.firebaseapp.com",
+  databaseURL:"https://raldi-sistemav1-default-rtdb.firebaseio.com",
+  projectId:"raldi-sistemav1",
+  storageBucket:"raldi-sistemav1.firebasestorage.app",
+  messagingSenderId:"983595967299",
+  appId:"1:983595967299:web:381a4effa3289a7ff385f6"
+});
+const auth=firebase.auth(), db=firebase.database();
+const persist=auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e=>console.warn(e));
+const MAPA_REF='layouts/fabrica';           // único layout, fixo
+const PLANTA_W=1330, PLANTA_H=977;
+
+/* ===================== Setores e status (idênticos aos outros sistemas) ===================== */
+const OP_SETORES={
+  APOIO:{sigla:'APOIO',nome:'Áreas de Apoio',tipo:'digital',atividades:['Medição técnica','Liberado do PCP','Agrupamento do lote']},
+  SL:{sigla:'SL',nome:'Sublinha',tipo:'lote',atividades:['Corte','Laminado','Usinagem']},
+  LP:{sigla:'LP',nome:'Linha Principal',tipo:'produto',atividades:['Montagem','Pintura']},
+  EXP:{sigla:'EXP',nome:'Expedição',tipo:'digital',atividades:['Expedição','Montagem externa']}
+};
+const ST_OP={ nao:{label:'Não iniciada',cls:'c-nao'}, parcial:{label:'Em andamento',cls:'c-and'},
+  pausada:{label:'Pausada',cls:'c-pau'}, encerrada:{label:'Encerrada',cls:'c-fim'} };
+function opSetorDe(s){ return OP_SETORES[s]||OP_SETORES.SL; }
+function stOp(o){ return (o&&ST_OP[o.status])?o.status:'nao'; }
+
+/* ===================== Motor de tempo (mesmo do Raldi Apontar) ===================== */
+const JORNADA_PADRAO={ ini:'07:30', fim:'18:00', dias:[1,2,3,4,5],
+  intervalos:[{de:'09:00',ate:'09:15'},{de:'12:00',ate:'13:30'},{de:'16:00',ate:'16:15'}] };
+const HE_JANELA={ ini:'05:00', fim:'22:00' };
+let FERIADOS={};
+function jhm(s){ const [h,m]=String(s||'0:0').split(':').map(Number); return (h||0)*60+(m||0); }
+function jmin(d){ return d.getHours()*60+d.getMinutes()+d.getSeconds()/60; }
+function jdia(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function jover(a1,a2,b1,b2){ return Math.max(0,Math.min(a2,b2)-Math.max(a1,b1)); }
+function ehFeriado(d){ return !!FERIADOS[jdia(d)]; }
+function intervalosDe(j){
+  if(j&&j.semIntervalo) return [];
+  if(j&&Array.isArray(j.intervalos)&&j.intervalos.length) return j.intervalos;
+  if(j&&j.intervalos&&typeof j.intervalos==='object') return Object.values(j.intervalos);
+  if(j&&j.intIni&&j.intFim) return [{de:j.intIni,ate:j.intFim}];
+  return JORNADA_PADRAO.intervalos;
+}
+function diasDe(j){ return (j&&j.dias&&j.dias.length)?j.dias:JORNADA_PADRAO.dias; }
+function ehDiaUtil(d,j){ return diasDe(j).includes(d.getDay())&&!ehFeriado(d); }
+function percorre(iniISO,fimISO,j,fn){
+  const ini=new Date(iniISO), fim=new Date(fimISO);
+  if(!(fim>ini)) return 0;
+  let total=0,g=0;
+  const cur=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate());
+  const ult=new Date(fim.getFullYear(),fim.getMonth(),fim.getDate());
+  while(cur<=ult&&g++<400){
+    const mi=jdia(cur)===jdia(ini), mf=jdia(cur)===jdia(fim);
+    total+=fn(cur, mi?jmin(ini):0, mf?jmin(fim):1440);
+    cur.setDate(cur.getDate()+1);
+  }
+  return total;
+}
+function tempoTrabalhado(iniISO,fimISO,j){
+  j=j||JORNADA_PADRAO;
+  const jI=jhm(j.ini||JORNADA_PADRAO.ini), jF=jhm(j.fim||JORNADA_PADRAO.fim), ints=intervalosDe(j);
+  return Math.round(percorre(iniISO,fimISO,j,(dia,a,b)=>{
+    if(!ehDiaUtil(dia,j)) return 0;
+    let t=jover(a,b,jI,jF);
+    ints.forEach(iv=>{ t-=jover(Math.max(a,jI),Math.min(b,jF),jhm(iv.de),jhm(iv.ate)); });
+    return Math.max(0,t);
+  }));
+}
+function tempoHoraExtra(iniISO,fimISO,j){
+  j=j||JORNADA_PADRAO;
+  const jI=jhm(j.ini||JORNADA_PADRAO.ini), jF=jhm(j.fim||JORNADA_PADRAO.fim);
+  const hI=jhm(HE_JANELA.ini), hF=jhm(HE_JANELA.fim);
+  return Math.round(percorre(iniISO,fimISO,j,(dia,a,b)=>{
+    const janela=jover(a,b,hI,hF); if(!janela) return 0;
+    if(!ehDiaUtil(dia,j)) return janela;
+    return Math.max(0,janela-jover(a,b,jI,jF));
+  }));
+}
+function fmtMin(m){
+  if(!m||m<=0) return '0min';
+  const h=Math.floor(m/60), r=Math.round(m%60);
+  return (h?h+'h':'')+(r?(h?' ':'')+r+'min':(h?'':'0min'));
+}
+function fmtHora(iso){ if(!iso) return '—'; const d=new Date(iso); if(isNaN(d)) return '—';
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function pausasDe(o){ const p=o&&o.pausas; return p?(Array.isArray(p)?p:Object.values(p)):[]; }
+function pausaAberta(o){ return pausasDe(o).find(p=>p&&p.de&&!p.ate)||null; }
+function minutosPausados(o,ate){ const f=ate||(o.fim&&o.fim.em)||new Date().toISOString();
+  return pausasDe(o).reduce((a,p)=>a+((p&&p.de)?tempoTrabalhado(p.de,p.ate||f,o.jornada):0),0); }
+function tempoNormalOP(o,ate){
+  if(!o||!o.inicio||!o.inicio.em) return 0;
+  const f=ate||(o.fim&&o.fim.em)||new Date().toISOString();
+  return Math.max(0,tempoTrabalhado(o.inicio.em,f,o.jornada)-
+    pausasDe(o).reduce((a,p)=>a+((p&&p.de)?tempoTrabalhado(p.de,p.ate||f,o.jornada):0),0));
+}
+function tempoExtraOP(o,ate){
+  if(!o||!o.extra||!o.inicio||!o.inicio.em) return 0;
+  const f=ate||(o.fim&&o.fim.em)||new Date().toISOString();
+  return Math.max(0,tempoHoraExtra(o.inicio.em,f,o.jornada)-
+    pausasDe(o).reduce((a,p)=>a+((p&&p.de)?tempoHoraExtra(p.de,p.ate||f,o.jornada):0),0));
+}
+function tempoTotalOP(o,ate){ return tempoNormalOP(o,ate)+tempoExtraOP(o,ate); }
+function funcsDe(o,fase){
+  const f=o&&o[fase]; if(!f) return [];
+  if(Array.isArray(f.funcs)&&f.funcs.length) return f.funcs;
+  if(f.funcs&&typeof f.funcs==='object'){ const v=Object.values(f.funcs); if(v.length) return v; }
+  return f.func?[f.func]:[];
+}
+function equipeOP(o){ return [...new Set([...funcsDe(o,'inicio'),...funcsDe(o,'fim')])]; }
+
+/* ===================== Utilidades ===================== */
+function esc(x){ return x==null?'':String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function usuarioAtual(){ return (auth.currentUser&&auth.currentUser.email)||'desconhecido'; }
+function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('on');
+  clearTimeout(window._t); window._t=setTimeout(()=>t.classList.remove('on'),2800); }
+function novoId(p){ return p+Date.now()+Math.floor(Math.random()*900+100); }
+function msgErro(e){
+  const c=String((e&&(e.code||e.message))||e);
+  if(/PERMISSION_DENIED|permission_denied|Permission denied/.test(c))
+    return 'Sem permissão no banco: falta liberar o nó "layouts" nas regras do Realtime Database.';
+  return 'Erro: '+((e&&e.message)||c);
+}
+function falha(e){ toast(msgErro(e)); }
+function faixaErro(txt){
+  const b=document.getElementById('erroFaixa');
+  if(!txt){ b.style.display='none'; return; }
+  b.style.display='block'; b.innerHTML=txt;
+}
+
+/* ===================== Estado ===================== */
+let OPS=[], PAINEL=[], EQUIPE=[], PONTOS={}, FUNDO='escuro';
+let modo='projeto', alvo='', editando=false, pontoSel=null, ligado=false;
+const Z={k:1,x:0,y:0};
+function pontosLista(){ return Object.values(PONTOS||{}).sort((a,b)=>(a.ordem||0)-(b.ordem||0)); }
+
+/* ===================== Projeto → lote ===================== */
+// As OPs de Sublinha e Apoio são emitidas uma vez para o lote inteiro e cobrem
+// todos os projetos dele — por isso o projeto herda as OPs do seu lote.
+function loteDoProjeto(proj){
+  proj=String(proj||'').trim(); if(!proj) return '';
+  const p=PAINEL.find(r=>String(r.projeto||'').trim()===proj&&String(r.lote||'').trim());
+  if(p) return String(p.lote).trim();
+  const o=OPS.find(o=>String(o.lote||'').trim()&&(o.projetosLote||[]).some(r=>String(r&&r.projeto||'').trim()===proj));
+  return o?String(o.lote).trim():'';
+}
+function projetosDaOP(o){
+  const s=new Set();
+  if(o.projeto) s.add(String(o.projeto).trim());
+  (o.projetosLote||[]).forEach(r=>{ if(r&&r.projeto) s.add(String(r.projeto).trim()); });
+  return [...s];
+}
+function escopoOP(o){ return (o.tipo==='lote'||projetosDaOP(o).length>1)?'lote':'projeto'; }
+function opsFiltradas(){
+  if(modo==='tudo') return OPS;
+  if(modo==='lote'){
+    const l=String(alvo||'').trim(); if(!l) return [];
+    return OPS.filter(o=>String(o.lote||'').trim()===l);
+  }
+  const p=String(alvo||'').trim(); if(!p) return [];
+  const lote=loteDoProjeto(p);
+  return OPS.filter(o=>projetosDaOP(o).includes(p)||(lote&&o.tipo==='lote'&&String(o.lote||'').trim()===lote));
+}
+
+/* ===================== Pontos ===================== */
+function opsDoPonto(p,lista){
+  return (lista||opsFiltradas()).filter(o=>{
+    if(String(o.setor||'')!==String(p.setor||'')) return false;
+    if(p.atividade&&String(o.atividade||'')!==String(p.atividade)) return false;
+    if(p.funcs&&p.funcs.length){
+      const e=equipeOP(o);
+      if(!e.length||!e.some(n=>p.funcs.includes(n))) return false;
+    }
+    return true;
+  });
+}
+function estadoPonto(ops){
+  if(!ops.length) return {st:'vazio',frac:0,pausadas:0,total:0,fim:0};
+  const c={nao:0,parcial:0,pausada:0,encerrada:0};
+  ops.forEach(o=>c[stOp(o)]++);
+  let st='nao';
+  if(c.parcial) st='and';
+  else if(c.pausada) st='pau';
+  else if(c.encerrada===ops.length) st='fim';
+  else if(c.encerrada) st='and';
+  return {st,frac:c.encerrada/ops.length,pausadas:c.pausada,total:ops.length,fim:c.encerrada};
+}
+
+/* ===================== Render ===================== */
+function render(){
+  montarSelectAlvo();
+  document.getElementById('canvas').classList.toggle('escuro',FUNDO==='escuro');
+  desenharPinos();
+  desenharResumo();
+  atualizarAviso();
+  const dv=document.getElementById('dicavazia');
+  if(!pontosLista().length&&!editando){
+    dv.style.display='flex';
+    dv.innerHTML=`<b>A planta ainda não tem pontos</b>
+      <p>Abra "Editar pontos" no topo e clique sobre a planta para marcar onde fica cada posto de trabalho.</p>`;
+  }else dv.style.display='none';
+  if(pontoSel) abrirGaveta(pontoSel,true);
+}
+function desenharPinos(){
+  const lista=opsFiltradas(), semAlvo=(modo!=='tudo'&&!alvo);
+  document.getElementById('pins').innerHTML=pontosLista().map(p=>{
+    const ops=semAlvo?[]:opsDoPonto(p,lista);
+    const e=estadoPonto(ops);
+    const R=13.5, C=2*Math.PI*R;
+    const dash=(e.frac>0&&e.st!=='fim')?`${(C*e.frac).toFixed(1)} ${C.toFixed(1)}`:'0 999';
+    return `<div class="pin st-${e.st}${pontoSel===p.id?' sel':''}${editando?' arrastavel':''}"
+        style="left:${(p.x*100).toFixed(3)}%;top:${(p.y*100).toFixed(3)}%" data-id="${p.id}">
+      <svg viewBox="0 0 34 34">
+        ${(e.frac>0&&e.st!=='fim')?`<circle class="anel" cx="17" cy="17" r="${R}"></circle>
+        <circle class="prog" cx="17" cy="17" r="${R}" stroke-dasharray="${dash}"></circle>`:''}
+        <circle class="bola" cx="17" cy="17" r="10"></circle>
+      </svg>
+      <div class="qtd">${e.total||''}</div>
+      ${(e.pausadas&&e.st!=='pau')?`<div class="selo">⏸${e.pausadas}</div>`:''}
+      <div class="rot">${esc(p.nome||p.atividade||opSetorDe(p.setor).sigla)}</div>
+    </div>`;
+  }).join('');
+  aplicarZoom(); ligarPinos();
+}
+function desenharResumo(){
+  const lista=(modo!=='tudo'&&!alvo)?[]:opsFiltradas();
+  const c={nao:0,parcial:0,pausada:0,encerrada:0};
+  lista.forEach(o=>c[stOp(o)]++);
+  const tot=lista.length, pct=tot?Math.round(c.encerrada/tot*100):0;
+  document.getElementById('resumo').innerHTML=`
+    <div class="rz"><b>${pct}%</b><span>Concluído</span></div>
+    <div class="rz"><b>${c.parcial}</b><span>Rodando</span></div>
+    <div class="rz"><b>${c.pausada}</b><span>Pausadas</span></div>
+    <div class="rz"><b>${tot}</b><span>OPs</span></div>`;
+}
+function montarSelectAlvo(){
+  const s=document.getElementById('selAlvo');
+  if(document.activeElement===s) return;
+  if(modo==='tudo'){ s.style.display='none'; return; }
+  s.style.display='';
+  const set=new Set();
+  if(modo==='projeto'){
+    PAINEL.forEach(r=>{ const p=String(r.projeto||'').trim(); if(p) set.add(p); });
+    OPS.forEach(o=>projetosDaOP(o).forEach(p=>set.add(p)));
+  }else{
+    PAINEL.forEach(r=>{ const l=String(r.lote||'').trim(); if(l) set.add(l); });
+    OPS.forEach(o=>{ const l=String(o.lote||'').trim(); if(l) set.add(l); });
+  }
+  const ops=[...set].sort((a,b)=>String(b).localeCompare(String(a),'pt',{numeric:true}));
+  if(alvo&&!ops.includes(alvo)) alvo='';
+  s.innerHTML=`<option value="">${modo==='projeto'?'Escolha o projeto':'Escolha o lote'}</option>`+
+    ops.map(v=>{
+      const extra=modo==='projeto'?(()=>{ const l=loteDoProjeto(v); return l?' · lote '+l:' · sem lote'; })():'';
+      return `<option value="${esc(v)}"${v===alvo?' selected':''}>${esc(v)}${esc(extra)}</option>`;
+    }).join('');
+}
+function setModo(v){ modo=v; alvo=''; pontoSel=null; fecharGaveta(); render(); }
+function setAlvo(v){ alvo=v; render(); }
+
+/* ===================== Zoom e pan ===================== */
+const canvas=document.getElementById('canvas'), stage=document.getElementById('stage');
+function aplicarZoom(){
+  stage.style.transform=`translate(${Z.x}px,${Z.y}px) scale(${Z.k})`;
+  document.getElementById('pins').style.setProperty('--inv',(1/Z.k).toFixed(4));
+}
+function enquadrar(tent){
+  const r=canvas.getBoundingClientRect();
+  if(!r.width||!r.height){                    // o canvas ainda não tem tamanho: tenta de novo no próximo quadro
+    if((tent||0)<20) requestAnimationFrame(()=>enquadrar((tent||0)+1));
+    return;
+  }
+  const k=Math.min(r.width/PLANTA_W,r.height/PLANTA_H)*.92;
+  Z.k=Math.max(k,.05); Z.x=(r.width-PLANTA_W*Z.k)/2; Z.y=(r.height-PLANTA_H*Z.k)/2; aplicarZoom();
+}
+function zoomEm(f,cx,cy){
+  const nk=Math.min(16,Math.max(.05,Z.k*f));
+  Z.x=cx-(cx-Z.x)*(nk/Z.k); Z.y=cy-(cy-Z.y)*(nk/Z.k); Z.k=nk; aplicarZoom();
+}
+function zoomBotao(f){ const r=canvas.getBoundingClientRect(); zoomEm(f,r.width/2,r.height/2); }
+canvas.addEventListener('wheel',e=>{ e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  zoomEm(e.deltaY<0?1.14:1/1.14,e.clientX-r.left,e.clientY-r.top);
+},{passive:false});
+
+let arr=null, toques=new Map(), pinchD=0, moveu=false;
+canvas.addEventListener('pointerdown',e=>{
+  if(e.target.closest('.pin')) return;
+  toques.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(toques.size===2){ const [a,b]=[...toques.values()]; pinchD=Math.hypot(a.x-b.x,a.y-b.y); arr=null; return; }
+  arr={x:e.clientX,y:e.clientY,ox:Z.x,oy:Z.y}; moveu=false;
+  canvas.setPointerCapture(e.pointerId); canvas.classList.add('arrastando');
+});
+canvas.addEventListener('pointermove',e=>{
+  if(toques.has(e.pointerId)) toques.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(toques.size===2){
+    const [a,b]=[...toques.values()], d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinchD){ const r=canvas.getBoundingClientRect();
+      zoomEm(d/pinchD,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top); }
+    pinchD=d; moveu=true; return;
+  }
+  if(!arr) return;
+  const dx=e.clientX-arr.x, dy=e.clientY-arr.y;
+  if(Math.abs(dx)>3||Math.abs(dy)>3) moveu=true;
+  Z.x=arr.ox+dx; Z.y=arr.oy+dy; aplicarZoom();
+});
+function fimPointer(e){
+  toques.delete(e.pointerId); if(toques.size<2) pinchD=0;
+  if(arr&&!moveu&&editando) cliqueNaPlanta(e);
+  arr=null; canvas.classList.remove('arrastando');
+}
+canvas.addEventListener('pointerup',fimPointer);
+canvas.addEventListener('pointercancel',fimPointer);
+function alternarFundo(){ db.ref(MAPA_REF+'/fundo').set(FUNDO==='escuro'?'claro':'escuro').catch(falha); }
+
+/* ===================== Edição de pontos ===================== */
+function alternarEdicao(){
+  editando=!editando;
+  const b=document.getElementById('btEdit');
+  b.classList.toggle('on',editando);
+  b.textContent=editando?'Concluir edição':'Editar pontos';
+  canvas.classList.toggle('editando',editando);
+  const av=document.getElementById('aviso');
+  av.style.display=editando?'block':'none';
+  atualizarAviso();
+  if(editando) fecharGaveta();
+  render();
+}
+function atualizarAviso(){
+  const av=document.getElementById('aviso');
+  if(!editando){ av.style.display='none'; return; }
+  av.style.display='block';
+  av.innerHTML=`Modo edição · <b>${pontosLista().length} ponto(s) gravados</b> — clique na planta para criar, arraste para mover, clique na bolinha para configurar`;
+}
+function coordsDoEvento(e){
+  const r=document.getElementById('planta').getBoundingClientRect();
+  return { x:Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),
+           y:Math.min(1,Math.max(0,(e.clientY-r.top)/r.height)) };
+}
+function cliqueNaPlanta(e){
+  const r=document.getElementById('planta').getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;
+  editarPonto(null,coordsDoEvento(e));
+}
+function ligarPinos(){
+  document.querySelectorAll('.pin').forEach(el=>{
+    const id=el.dataset.id;
+    el.addEventListener('pointerdown',ev=>{
+      ev.stopPropagation();
+      if(!editando) return;
+      let mexeu=false;
+      el.setPointerCapture(ev.pointerId);
+      const mv=e2=>{ const c=coordsDoEvento(e2); mexeu=true;
+        el.style.left=(c.x*100)+'%'; el.style.top=(c.y*100)+'%'; };
+      const up=e2=>{
+        el.removeEventListener('pointermove',mv); el.removeEventListener('pointerup',up);
+        if(mexeu){ const c=coordsDoEvento(e2);
+          db.ref(MAPA_REF+'/pontos/'+id).update({x:c.x,y:c.y}).catch(falha); }
+      };
+      el.addEventListener('pointermove',mv); el.addEventListener('pointerup',up);
+    });
+    el.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      const p=pontosLista().find(x=>x.id===id); if(!p) return;
+      if(editando) editarPonto(p); else abrirGaveta(id);
+    });
+  });
+}
+
+/* ===================== Gaveta ===================== */
+function fecharGaveta(){ pontoSel=null; document.getElementById('gav').style.display='none';
+  document.querySelectorAll('.pin.sel').forEach(e=>e.classList.remove('sel')); }
+function abrirGaveta(id,manter){
+  const p=pontosLista().find(x=>x.id===id); if(!p){ fecharGaveta(); return; }
+  pontoSel=id;
+  document.querySelectorAll('.pin').forEach(e=>e.classList.toggle('sel',e.dataset.id===id));
+  const S=opSetorDe(p.setor);
+  const ops=(modo!=='tudo'&&!alvo)?[]:opsDoPonto(p);
+  const e=estadoPonto(ops);
+  document.getElementById('gav').style.display='flex';
+  document.getElementById('gavT').textContent=p.nome||p.atividade||S.nome;
+  document.getElementById('gavS').textContent=`${S.nome} · ${p.atividade||'todas as atividades'}`+
+    (p.funcs&&p.funcs.length?` · só ${p.funcs.join(', ')}`:'');
+
+  const c={nao:0,parcial:0,pausada:0,encerrada:0}; ops.forEach(o=>c[stOp(o)]++);
+  const cor={nao:'#8d8b83',parcial:'#d4930d',pausada:'#7a6ea8',encerrada:'#2f8f46'};
+  const barra=ops.length?`<div class="barras">${Object.keys(c).map(k=>c[k]?`<i style="width:${c[k]/ops.length*100}%;background:${cor[k]}"></i>`:'').join('')}</div>
+    <div style="font-size:12px;color:var(--mut);font-weight:600;margin-bottom:12px">${e.fim} de ${ops.length} encerradas${e.pausadas?` · ${e.pausadas} parada(s) agora`:''}</div>`:'';
+
+  const cards=ops.slice().sort((a,b)=>String(a.numero||'').localeCompare(String(b.numero||''))).map(o=>{
+    const st=stOp(o), v=ST_OP[st], esco=escopoOP(o);
+    const eq=equipeOP(o), pa=pausasDe(o), ab=pausaAberta(o);
+    const trab=tempoTotalOP(o), paus=minutosPausados(o), ext=tempoExtraOP(o);
+    return `<div class="op">
+      <div class="op-h">
+        <span class="op-n">OP ${esc(o.numero||'—')}</span>
+        <span class="chip ${v.cls}">${v.label}</span>
+        <span class="chip ${esco==='lote'?'c-lote':'c-proj'}">${esco==='lote'?'lote '+esc(o.lote||'—'):'só deste projeto'}</span>
+      </div>
+      <dl class="op-l">
+        <dt>Atividade</dt><dd>${esc(o.atividade||'—')}</dd>
+        <dt>Funcionário</dt><dd>${eq.length?esc(eq.join(', ')):'—'}</dd>
+        <dt>Início</dt><dd>${fmtHora(o.inicio&&o.inicio.em)}</dd>
+        <dt>Fim</dt><dd>${fmtHora(o.fim&&o.fim.em)}</dd>
+        <dt>Tempo trabalhado</dt><dd>${st==='nao'?'—':fmtMin(trab)}${ext?` <span style="color:var(--st-and)">(${fmtMin(ext)} extra)</span>`:''}</dd>
+        <dt>Tempo pausado</dt><dd>${paus?fmtMin(paus):'—'}${ab?' <b style="color:var(--st-pau)">· parada agora</b>':''}</dd>
+        ${esco==='lote'?`<dt>Cobre</dt><dd>${projetosDaOP(o).length} projeto(s) do lote</dd>`:''}
+      </dl>
+      ${pa.length?`<div class="op-p">${pa.length} pausa(s):<br>${pa.map(x=>
+        `<b>${fmtHora(x.de)}</b> → ${x.ate?fmtHora(x.ate):'em aberto'}${x.motivo?' · '+esc(x.motivo):''}`).join('<br>')}</div>`:''}
+      ${o.obs?`<div class="op-p">Obs.: ${esc(o.obs)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  let vazioTxt='';
+  if(!ops.length){
+    if(modo!=='tudo'&&!alvo) vazioTxt=`Escolha um ${modo} no topo para ver o que passa por aqui.`;
+    else if(modo==='projeto'&&!loteDoProjeto(alvo)&&opSetorDe(p.setor).tipo==='lote')
+      vazioTxt=`O projeto <b>${esc(alvo)}</b> ainda não tem lote vinculado no Painel de Controle, então não existe OP de Sublinha para puxar. Vincule o lote e este ponto passa a acender.`;
+    else vazioTxt='Nenhuma OP emitida para este ponto com o filtro atual.';
+  }
+  const gc=document.getElementById('gavC'), rol=gc.scrollTop;
+  gc.innerHTML=barra+(ops.length?cards:`<div class="nada">${vazioTxt}</div>`);
+  if(manter) gc.scrollTop=rol;
+}
+
+/* ===================== Modal e ponto ===================== */
+function abrirModal(t,c,b){ document.getElementById('mT').textContent=t;
+  document.getElementById('mC').innerHTML=c; document.getElementById('mB').innerHTML=b;
+  document.getElementById('fundo').classList.add('on'); }
+function fecharModal(){ document.getElementById('fundo').classList.remove('on'); }
+
+let pForm=null;
+function editarPonto(p,coords){
+  pForm=p?{...p,funcs:(p.funcs||[]).slice()}
+        :{id:novoId('pt'),nome:'',setor:'SL',atividade:'',funcs:[],x:coords.x,y:coords.y,ordem:Date.now()};
+  const S=opSetorDe(pForm.setor);
+  abrirModal(p?'Editar ponto':'Novo ponto',`
+    <div class="cmp"><label>Nome do ponto</label>
+      <input id="pfNome" value="${esc(pForm.nome)}" placeholder="Ex.: Seccionadora 1, Bancada de montagem A">
+      <div class="dica">É o que aparece embaixo da bolinha na planta.</div></div>
+    <div class="cmp"><label>Setor</label>
+      <select id="pfSetor" onchange="mudouSetorPonto(this.value)">
+        ${Object.values(OP_SETORES).map(s=>`<option value="${s.sigla}"${s.sigla===pForm.setor?' selected':''}>${s.nome}</option>`).join('')}
+      </select></div>
+    <div class="cmp"><label>Atividade</label>
+      <select id="pfAtiv">
+        <option value="">Todas as atividades do setor</option>
+        ${S.atividades.map(a=>`<option value="${esc(a)}"${a===pForm.atividade?' selected':''}>${esc(a)}</option>`).join('')}
+      </select>
+      <div class="dica">Deixe em "todas" só se o setor inteiro ocupa uma posição única na planta.</div></div>
+    <div class="cmp"><label>Funcionários deste posto (opcional)</label>
+      <div class="bd" id="pfFuncs">${EQUIPE.length?EQUIPE.map(f=>
+        `<label><input type="checkbox" value="${esc(f.nome)}"${pForm.funcs.includes(f.nome)?' checked':''}> ${esc(f.nome)}</label>`).join('')
+        :'<div style="font-size:13px;color:var(--mut);padding:6px">Nenhum funcionário cadastrado no sistema de produção.</div>'}</div>
+      <div class="dica">Use quando houver <b>duas estações da mesma atividade</b>. Sem isso as duas bolinhas acendem juntas, porque a OP não guarda posição física.</div></div>`,
+    `${p?`<button class="btl per" onclick="excluirPonto('${p.id}')">Excluir</button>`:''}
+     <button class="btl" onclick="fecharModal()">Cancelar</button>
+     <button class="btl pri" onclick="salvarPonto()">Salvar ponto</button>`);
+}
+function mudouSetorPonto(sig){
+  pForm.setor=sig; pForm.atividade='';
+  document.getElementById('pfAtiv').innerHTML='<option value="">Todas as atividades do setor</option>'+
+    opSetorDe(sig).atividades.map(a=>`<option value="${esc(a)}">${esc(a)}</option>`).join('');
+}
+function salvarPonto(){
+  if(!pForm) return;
+  pForm.nome=document.getElementById('pfNome').value.trim();
+  pForm.setor=document.getElementById('pfSetor').value;
+  pForm.atividade=document.getElementById('pfAtiv').value;
+  pForm.funcs=[...document.querySelectorAll('#pfFuncs input:checked')].map(i=>i.value);
+  if(!pForm.nome) pForm.nome=pForm.atividade||opSetorDe(pForm.setor).sigla;
+  const idSalvo=pForm.id;
+  db.ref(MAPA_REF+'/pontos/'+idSalvo).set({...pForm,atualizadoEm:new Date().toISOString(),atualizadoPor:usuarioAtual()})
+    .then(()=>{
+      fecharModal(); toast('Ponto salvo');
+      setTimeout(()=>{                        // o banco aceitou, mas o ponto voltou pela leitura?
+        if(!PONTOS||!PONTOS[idSalvo])
+          faixaErro('<b>O ponto foi gravado, mas não volta na leitura.</b> Confira se o nó '+
+            '<code>layouts</code> tem <code>".read": "auth != null"</code> nas regras do Realtime Database.');
+      },2500);
+    }).catch(falha);
+}
+function excluirPonto(id){
+  if(!confirm('Excluir este ponto da planta?')) return;
+  db.ref(MAPA_REF+'/pontos/'+id).remove()
+    .then(()=>{ fecharModal(); if(pontoSel===id) fecharGaveta(); toast('Ponto excluído'); })
+    .catch(falha);
+}
+
+/* ===================== Diagnóstico ===================== */
+async function diagnostico(){
+  const L=[];
+  const add=(ok,t)=>L.push(`<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--ln);font-size:13.5px;font-weight:600">
+    <span style="color:${ok?'#2f8f46':'#982424'};font-size:16px;line-height:1.2">${ok?'\u2714':'\u2716'}</span><span>${t}</span></div>`);
+  const cod=e=>esc(String((e&&(e.code||e.message))||e));
+
+  add(!!auth.currentUser,'Autenticado como <b>'+esc(usuarioAtual())+'</b>');
+
+  let leu=false;
+  try{
+    const snap=await db.ref(MAPA_REF).once('value');
+    const v=snap.val()||{};
+    leu=true;
+    add(true,'Leitura de <code>'+MAPA_REF+'</code> permitida — <b>'+Object.keys(v.pontos||{}).length+' ponto(s)</b> gravados no banco');
+  }catch(e){ add(false,'Leitura de <code>layouts</code> NEGADA: <code>'+cod(e)+'</code>'); }
+
+  const tid='_diag'+Date.now();
+  let escreveu=false;
+  try{
+    await db.ref(MAPA_REF+'/pontos/'+tid).set({id:tid,nome:'teste',setor:'SL',atividade:'',x:.5,y:.5,ordem:0});
+    escreveu=true; add(true,'Escrita de ponto permitida');
+  }catch(e){ add(false,'Escrita de ponto NEGADA: <code>'+cod(e)+'</code>'); }
+
+  if(escreveu){
+    try{ await db.ref(MAPA_REF+'/pontos/'+tid).remove(); add(true,'Exclusão de ponto permitida'); }
+    catch(e){ add(false,'Exclusão NEGADA (ponto de teste ficou no banco): <code>'+cod(e)+'</code>'); }
+  }
+
+  add(pontosLista().length>0||!leu,'Pontos carregados na tela agora: <b>'+pontosLista().length+'</b>');
+
+  const regra='"layouts": { ".read": "auth != null", ".write": "auth != null" }';
+  const conserto=(!leu||!escreveu)?`<div style="margin-top:14px;background:#fdeaea;border:1px solid rgba(152,36,36,.3);
+      border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.65;color:#7f1e1e">
+      <b>O banco está recusando.</b> No Console do Firebase &rarr; Realtime Database &rarr; Regras, deixe o bloco
+      <code>layouts</code> exatamente assim e clique em <b>Publicar</b>:
+      <div style="margin-top:8px;background:rgba(152,36,36,.09);padding:9px 11px;border-radius:7px;
+      font-family:ui-monospace,monospace;font-size:12px;word-break:break-all">${esc(regra)}</div>
+      Se houver <code>.validate</code> dentro de <code>layouts</code>, remova.</div>`:'';
+  abrirModal('Diagnóstico do banco',L.join('')+conserto,'<button class="btl pri" onclick="fecharModal()">Fechar</button>');
+}
+
+/* ===================== Login e escuta ===================== */
+function erro(m){ document.getElementById('lgErr').textContent=m||''; }
+function traduz(c){
+  const m={'auth/invalid-email':'E-mail inválido.','auth/invalid-credential':'E-mail ou senha incorretos.',
+    'auth/wrong-password':'Senha incorreta.','auth/user-not-found':'Usuário não encontrado.',
+    'auth/too-many-requests':'Muitas tentativas. Aguarde e tente de novo.',
+    'auth/network-request-failed':'Sem conexão com a internet.','auth/user-disabled':'Usuário desativado.',
+    'auth/unauthorized-domain':'DOM'};
+  if(m[c]==='DOM') return 'Domínio não autorizado: '+location.hostname;
+  return m[c]||('Não foi possível entrar. ('+(c||'?')+')');
+}
+function entrar(){
+  const e=(document.getElementById('em').value||'').trim(), s=document.getElementById('se').value||'';
+  if(!e||!s){ erro('Preencha e-mail e senha.'); return; }
+  const b=document.getElementById('lgBtn'); b.disabled=true; b.textContent='Entrando...'; erro('');
+  persist.then(()=>auth.signInWithEmailAndPassword(e,s))
+    .catch(x=>erro(traduz(x.code)))
+    .finally(()=>{ b.disabled=false; b.textContent='Entrar'; });
+}
+function sair(){ if(confirm('Sair do Mapa da Fábrica?')) auth.signOut(); }
+function mostrar(id){ ['login','app'].forEach(x=>document.getElementById(x).classList.toggle('on',x===id)); }
+function diag(){
+  const d=document.getElementById('lgDiag');
+  if(location.protocol==='file:'){ d.className='lg-d err';
+    d.innerHTML='<b>Arquivo aberto direto do disco.</b>O login só funciona por https. Acesse pelo endereço publicado.';
+    document.getElementById('lgBtn').disabled=true; return; }
+  d.className='lg-d ok'; d.textContent='Conectado · '+location.hostname;
+}
+setTimeout(diag,150);
+
+function ligar(){
+  if(ligado) return; ligado=true;
+  enquadrar();
+  db.ref('.info/connected').on('value',s=>document.getElementById('off').classList.toggle('on',!s.val()));
+  db.ref('feriados').on('value',s=>{ FERIADOS=s.val()||{}; render(); },e=>console.warn('feriados',e));
+  db.ref('equipe').on('value',s=>{ EQUIPE=Object.values(s.val()||{}).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''))); },e=>console.warn('equipe',e));
+  db.ref('painel').on('value',s=>{ PAINEL=Object.values(s.val()||{}); render(); },e=>console.warn('painel',e));
+  db.ref('ops').on('value',s=>{ OPS=Object.values(s.val()||{}); render(); },e=>console.warn('ops',e));
+  db.ref(MAPA_REF).on('value',s=>{
+    faixaErro(''); const v=s.val()||{}; PONTOS=v.pontos||{}; FUNDO=v.fundo||'escuro'; render();
+  },e=>{
+    faixaErro('<b>Os pontos não carregam.</b> O banco negou a leitura de <code>layouts</code>. '+
+      'No Console do Firebase → Realtime Database → Regras, libere: '+
+      '<code>"layouts": { ".read": "auth != null", ".write": "auth != null" }</code>');
+  });
+}
+auth.onAuthStateChanged(u=>{
+  if(u){ mostrar('app'); ligar(); }
+  else{ const f=document.getElementById('loginForm'); if(f) f.reset(); mostrar('login'); }
+});
+window.addEventListener('resize',()=>{ if(document.getElementById('app').classList.contains('on')) enquadrar(); });
+setInterval(()=>{ if(document.getElementById('app').classList.contains('on')) render(); },60000);
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharModal(); fecharGaveta(); } });
+</script>
+</body>
+</html>
